@@ -1,11 +1,12 @@
 package db
 
 import (
+	"encoding/json"
 	"japv6/models"
 	"log"
 )
 
-func InsertWordCard(card models.WordCard) error {
+func InsertWordCard(card models.Card) error {
 	query := `
 		INSERT OR REPLACE INTO words (id, card_v, card_sync_v, card_data)
 		VALUES (?, ?, ?, ?)
@@ -15,7 +16,7 @@ func InsertWordCard(card models.WordCard) error {
 	return err
 }
 
-func FillWordCards(cards []models.WordCard) error {
+func FillWordCards(cards []models.Card) error {
 	tx, err := conn.Begin()
 	if err != nil {
 		return err
@@ -42,7 +43,7 @@ func FillWordCards(cards []models.WordCard) error {
 	return tx.Commit()
 }
 
-func SelectWordCards() ([]models.WordCard, error) {
+func SelectWordCards() ([]models.Card, error) {
 	query := `
 		SELECT id, card_v, card_sync_v, card_data
 		FROM words
@@ -53,9 +54,9 @@ func SelectWordCards() ([]models.WordCard, error) {
 	}
 	defer rows.Close()
 
-	re := make([]models.WordCard, 0, 40)
+	re := make([]models.Card, 0, 40)
 	for rows.Next() {
-		var c models.WordCard
+		var c models.Card
 		err = rows.Scan(&c.ID, &c.V, &c.SyncV, &c.Data)
 		if err != nil {
 			return nil, err
@@ -66,8 +67,41 @@ func SelectWordCards() ([]models.WordCard, error) {
 	return re, nil
 }
 
-func UpdateWordCards(cards []models.WordCard) ([]models.CardMeta, error) {
+func SelectMetaCardsByIds(ids []int) ([]models.CardMeta, error) {
+	j, err := json.Marshal(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT id, card_v, card_sync_v
+		FROM words
+		WHERE id IN (SELECT value FROM json_each(?))`
+
+	rows, err := conn.Query(query, j)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	re := make([]models.CardMeta, 0, 10)
+	for rows.Next() {
+		var c models.CardMeta
+		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
+		if err != nil {
+			return nil, err
+		}
+		re = append(re, c)
+	}
+
+	return re, nil
+}
+
+func UpdateWordCards(cards []models.Card) ([]models.CardMeta, error) {
 	v, err := GetVersion("word_cards")
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := conn.Begin()
 	if err != nil {
@@ -84,10 +118,6 @@ func UpdateWordCards(cards []models.WordCard) ([]models.CardMeta, error) {
 		return nil, err
 	}
 	defer stmt.Close()
-
-	if err != nil {
-		return nil, err
-	} 
 
 	re := make([]models.CardMeta, len(cards))
 	for i, c := range cards {

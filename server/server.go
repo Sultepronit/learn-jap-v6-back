@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"japv6/db"
 	"japv6/models"
+	"japv6/sync"
 	"log"
 	"net/http"
 )
@@ -13,7 +14,7 @@ func Start() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		log.Println(r.URL.Path)
-		var cards []models.WordCard
+		var cards []models.Card
 		if err := json.NewDecoder(r.Body).Decode(&cards); err != nil {
 			log.Println("Bad JSON:", err)
 			http.Error(w, "Bad JSON", 400)
@@ -38,15 +39,16 @@ func Start() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		log.Println(r.URL.Path)
 
-		var cards []models.WordCard
+		var cards []models.Card
 		if err := json.NewDecoder(r.Body).Decode(&cards); err != nil {
 			log.Println("Bad JSON:", err)
 			http.Error(w, "Bad JSON", 400)
 			return
 		}
 
-		re, err := db.UpdateWordCards(cards)
-		log.Println("updated?")
+		// sync.SyncWordCards(cards)
+		// re, err := db.UpdateWordCards(cards)
+		re, err := sync.SyncWordCards(cards)
 		if err != nil {
 			log.Fatal(err)
 		}
