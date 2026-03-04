@@ -7,7 +7,7 @@ import (
 
 func InsertWordCard(card models.WordCard) error {
 	query := `
-		INSERT INTO words (id, card_v, card_sync_v, card_data)
+		INSERT OR REPLACE INTO words (id, card_v, card_sync_v, card_data)
 		VALUES (?, ?, ?, ?)
 	`
 	r, err := conn.Exec(query, card.ID, card.V, card.SyncV, card.Data)
@@ -23,7 +23,7 @@ func FillWordCards(cards []models.WordCard) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO words (id, card_v, card_sync_v, card_data)
+		INSERT OR REPLACE INTO words (id, card_v, card_sync_v, card_data)
 		VALUES (?, ?, ?, ?)
 	`)
 	if err != nil {
@@ -42,29 +42,68 @@ func FillWordCards(cards []models.WordCard) error {
 	return tx.Commit()
 }
 
-// GUESS
-func SelectVoices(isMale bool) ([]models.Voice, error) {
+func SelectWordCards() ([]models.WordCard, error) {
 	query := `
-		SELECT name, code_name, rate, rating, comment
-		FROM voices
-		WHERE excluded = false
-			AND is_male = ?
+		SELECT id, card_v, card_sync_v, card_data
+		FROM words
 	`
-	rows, err := conn.Query(query, isMale)
+	rows, err := conn.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	re := make([]models.Voice, 0, 40)
+	re := make([]models.WordCard, 0, 40)
 	for rows.Next() {
-		var v models.Voice
-		err = rows.Scan(&v.Name, &v.CodeName, &v.Rate, &v.Rating, &v.Comment)
+		var c models.WordCard
+		err = rows.Scan(&c.ID, &c.V, &c.SyncV, &c.Data)
 		if err != nil {
 			return nil, err
 		}
-		re = append(re, v)
+		re = append(re, c)
 	}
 
 	return re, nil
+}
+
+func UpdateWordCards(cards []models.WordCard) ([]models.CardMeta, error) {
+	v, err := GetVersion("word_cards")
+
+	tx, err := conn.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		UPDATE words
+		SET card_v = ?, card_sync_v = ?, card_data = ?
+		WHERE id = ?;
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	if err != nil {
+		return nil, err
+	} 
+
+	re := make([]models.CardMeta, len(cards))
+	for i, c := range cards {
+		v++
+		c.SyncV = v
+		re[i] = c.CardMeta
+		_, err := stmt.Exec(c.V, c.SyncV, c.Data, c.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, "word_cards")
+	if err != nil {
+		return nil, err
+	}
+
+	return re, tx.Commit()
 }

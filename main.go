@@ -7,8 +7,10 @@ import (
 )
 
 func main() {
-	log.Println("hello!")
 	db.Open()
-	db.Edit()
+	// db.Edit()
+	v, err := db.GetVersion("word_cards")
+	log.Println("v:", v, "err:", err)
+
 	server.Start()
 }
