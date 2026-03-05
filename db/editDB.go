@@ -19,17 +19,18 @@ func Edit() {
 	// )
 	// `
 
-	query := `
-	DROP TABLE IF EXISTS versions;
-	CREATE TABLE versions (
-		id TEXT PRIMARY KEY,
-		val INTEGER NOT NULL
-	)
-	`
-	r, err := conn.Exec(query)
+	// query := `
+	// DROP TABLE IF EXISTS versions;
+	// CREATE TABLE versions (
+	// 	id TEXT PRIMARY KEY,
+	// 	val INTEGER NOT NULL
+	// )
+	// `
+	// r, err := conn.Exec(query)
 
-	query = `INSERT INTO versions (id, val) VALUES (?, ?)`
-	r, err = conn.Exec(query, "word_cards", 0)
+	query := `INSERT INTO versions (id, val) VALUES (?, ?)`
+	// r, err = conn.Exec(query, "word_cards", 0)
+	r, err := conn.Exec(query, "word_progs", 0)
 
 	handleErr(err)
 	log.Println(r.RowsAffected())

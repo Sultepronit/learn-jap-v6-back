@@ -39,8 +39,9 @@ func Start() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		log.Println(r.URL.Path)
 
-		var cards []models.Card
-		if err := json.NewDecoder(r.Body).Decode(&cards); err != nil {
+		// var cards []models.Card
+		var reports []models.Report
+		if err := json.NewDecoder(r.Body).Decode(&reports); err != nil {
 			log.Println("Bad JSON:", err)
 			http.Error(w, "Bad JSON", 400)
 			return
@@ -48,7 +49,9 @@ func Start() {
 
 		// sync.SyncWordCards(cards)
 		// re, err := db.UpdateWordCards(cards)
-		re, err := sync.SyncWordCards(cards)
+		// re, err := sync.SyncWordCards(cards)
+		// re, err := sync.SyncWordCards(reports)
+		re, err := sync.Do(reports)
 		if err != nil {
 			log.Fatal(err)
 		}
