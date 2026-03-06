@@ -72,3 +72,34 @@ func UpdateCards(cards []models.Card, v int, table string, group string) (re []m
 
 	return re, v, tx.Commit()
 }
+
+func TempFillCards(cards []models.Card, table string, group string) error {
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := fmt.Sprintf(`
+		INSERT INTO %[1]s (id, %[2]s_v, %[2]s_sync_v, %[2]s_data)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+		%[2]s_v = excluded.%[2]s_v,
+		%[2]s_sync_v = excluded.%[2]s_sync_v,
+		%[2]s_data = excluded.%[2]s_data;
+	`, table, group)
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, c := range cards {
+		_, err := stmt.Exec(c.ID, c.V, c.SyncV, c.Data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}

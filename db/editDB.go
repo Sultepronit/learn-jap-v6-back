@@ -9,15 +9,18 @@ func handleErr(err error) {
 }
 
 func Edit() {
-	// createTable := `
-	// DROP TABLE IF EXISTS words;
-	// CREATE TABLE words (
-	// 	id INTEGER PRIMARY KEY,
-	// 	card_v INTEGER NOT NULL,
-	// 	card_sync_v INTEGER NOT NULL,
-	// 	card_data BLOB NOT NULL
-	// )
-	// `
+	query := `
+	DROP TABLE IF EXISTS words;
+	CREATE TABLE words (
+		id INTEGER PRIMARY KEY,
+		card_v INTEGER NOT NULL DEFAULT 0,
+		card_sync_v INTEGER NOT NULL DEFAULT 0,
+		card_data BLOB,
+		prog_v INTEGER NOT NULL DEFAULT 0,
+		prog_sync_v INTEGER NOT NULL DEFAULT 0,
+		prog_data BLOB
+	)
+	`
 
 	// query := `
 	// DROP TABLE IF EXISTS versions;
@@ -26,11 +29,11 @@ func Edit() {
 	// 	val INTEGER NOT NULL
 	// )
 	// `
-	// r, err := conn.Exec(query)
+	r, err := conn.Exec(query)
 
-	query := `INSERT INTO versions (id, val) VALUES (?, ?)`
-	// r, err = conn.Exec(query, "word_cards", 0)
-	r, err := conn.Exec(query, "word_progs", 0)
+	// query := `INSERT INTO versions (id, val) VALUES (?, ?)`
+	// // r, err = conn.Exec(query, "word_cards", 0)
+	// r, err := conn.Exec(query, "word_progs", 0)
 
 	handleErr(err)
 	log.Println(r.RowsAffected())

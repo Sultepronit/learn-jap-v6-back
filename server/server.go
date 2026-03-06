@@ -6,6 +6,7 @@ import (
 	"japv6/models"
 	"japv6/sync"
 	"log"
+	"fmt"
 	"net/http"
 )
 
@@ -21,25 +22,26 @@ func Start() {
 			return
 		}
 
-		err := db.FillWordCards(cards)
+		q := r.URL.Query()
+		// err := db.FillWordCards(cards)
+		err := db.TempFillCards(cards, q.Get("table"), q.Get("group"))
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		// w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Success!")
+		// w.Header().Set("Content-Type", "application/json")
+		// w.WriteHeader(http.StatusOK)
 
-		if err := json.NewEncoder(w).Encode(cards); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		// if err := json.NewEncoder(w).Encode(cards); err != nil {
+		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+		// }
 	})
 
 	http.HandleFunc("POST /sync", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		log.Println(r.URL.Path)
 
-		// var cards []models.Card
 		var reports []models.Report
 		if err := json.NewDecoder(r.Body).Decode(&reports); err != nil {
 			log.Println("Bad JSON:", err)
@@ -47,10 +49,6 @@ func Start() {
 			return
 		}
 
-		// sync.SyncWordCards(cards)
-		// re, err := db.UpdateWordCards(cards)
-		// re, err := sync.SyncWordCards(cards)
-		// re, err := sync.SyncWordCards(reports)
 		re, err := sync.Do(reports)
 		if err != nil {
 			log.Fatal(err)
