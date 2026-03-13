@@ -6,13 +6,13 @@ import (
 	"fmt"
 )
 
-func filterUpdates(inputC []models.Card, isFresh bool) ([]models.Card, error) {
+func filterUpdates(table string, group string, inputC []models.Card, isFresh bool) ([]models.Card, error) {
 	ids := make([]int, len(inputC))
 	for i := range inputC {
 		ids[i] = inputC[i].ID
 	}
 
-	storedC, err := db.SelectMetaCardsByIds(ids)
+	storedC, err := db.SelectMetaCardsByIds(table, group, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -21,10 +21,13 @@ func filterUpdates(inputC []models.Card, isFresh bool) ([]models.Card, error) {
 	for _, c := range storedC {
 		m[c.ID] = c
 	}
+	// fmt.Println("stored:", m)
 
 	re := make([]models.Card, 0, len(inputC))
 	for _, c := range inputC {
 		sc := m[c.ID]
+		// fmt.Println("syncV:", c.SyncV, sc.SyncV)
+		// fmt.Println("V:", c.V, sc.V)
 		if c.SyncV == sc.SyncV {
 			re = append(re, c)
 		} else if c.V > sc.V && isFresh {
@@ -35,15 +38,20 @@ func filterUpdates(inputC []models.Card, isFresh bool) ([]models.Card, error) {
 	return re, nil
 }
 
-// func implementUpdates(updates []models.Card, v int) ([]models.CardMeta, int, error) {
-// 	filtered, err := filterUpdates(updates)
-// 	if err != nil {
-// 		return nil, 0, err
-// 	}
-
-// 	// return db.UpdateWordCards(filtered)
-// 	return db.UpdateCards(filtered, v)
-// }
+func update() {
+	filtered, err := filterUpdates(args[0], args[1], report.Updated, (clientV + 100 > lastV))
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println("filtered:", filtered)
+	
+	if len(filtered) != 0 {
+		report.Accepted, newV, err = db.UpdateCards(filtered, lastV, args[0], args[1])
+		if err != nil {
+			return nil, err
+		}
+	}
+}
 
 var typeToArgs = map[string][]string{
 	"wordCards": {"word", "card"},
@@ -63,18 +71,24 @@ func sync(report models.Report) (result *models.Report, err error) {
 
 	newV := lastV
 	if (report.Updated != nil) {
-		filtered, err := filterUpdates(report.Updated, (clientV + 100 > lastV))
+		filtered, err := filterUpdates(args[0], args[1], report.Updated, (clientV + 100 > lastV))
 		if err != nil {
 			return nil, err
 		}
+		// fmt.Println("filtered:", filtered)
+		
+		if len(filtered) != 0 {
+			report.Accepted, newV, err = db.UpdateCards(filtered, lastV, args[0], args[1])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
-		report.Accepted, newV, err = db.UpdateCards(filtered, lastV, args[0], args[1])
-		if err != nil {
-			return nil, err
-		}
-	} else if clientV == lastV {
+	if clientV == lastV && len(report.Accepted) == 0 {
 		return nil, nil
 	}
+	// fmt.Println(report.Accepted)
 
 	report.V = newV
 	report.Updated, err = db.SelectCardsSyncRange(args[0], args[1], clientV+1, lastV)
@@ -99,40 +113,3 @@ func Do(inputR []models.Report) ([]*models.Report, error) {
 
 	return outputR, nil
 }
-
-// func SyncWordCards(inputC []models.Card) ([]models.CardMeta, error) {
-// 	// v, err := db.GetVersion("word_cards")
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-
-// 	ids := make([]int, len(inputC))
-// 	for i := range inputC {
-// 		ids[i] = inputC[i].ID
-// 	}
-// 	// log.Println(ids)
-
-// 	storedC, err := db.SelectMetaCardsByIds(ids)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// log.Println(storedC)
-
-// 	m := make(map[int]models.CardMeta)
-// 	for _, c := range storedC {
-// 		m[c.ID] = c
-// 	}
-// 	// log.Println(m)
-
-// 	filtered := make([]models.Card, 0, len(inputC))
-// 	for _, c := range inputC {
-// 		sc := m[c.ID]
-// 		if c.SyncV == sc.SyncV {
-// 			filtered = append(filtered, c)
-// 		} else if c.V > sc.V {
-// 			filtered = append(filtered, c)
-// 		}
-// 	}
-
-// 	return db.UpdateWordCards(filtered)
-// }

@@ -1,9 +1,41 @@
 package db
 
 import (
+	"encoding/json"
 	"japv6/models"
     "fmt"
 )
+
+func SelectMetaCardsByIds(table string, group string, ids []int) ([]models.CardMeta, error) {
+	j, err := json.Marshal(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, %[1]s_v, %[1]s_sync_v
+		FROM %[2]ss
+		WHERE id IN (SELECT value FROM json_each(?))
+	`, group, table)
+
+	rows, err := conn.Query(query, j)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	re := make([]models.CardMeta, 0, 10)
+	for rows.Next() {
+		var c models.CardMeta
+		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
+		if err != nil {
+			return nil, err
+		}
+		re = append(re, c)
+	}
+
+	return re, nil
+}
 
 func SelectCardsSyncRange(table string, group string, from int, to int) ([]models.Card, error) {
 	query := fmt.Sprintf(`

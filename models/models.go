@@ -18,4 +18,5 @@ type Report struct {
 	V int `json:"v"`
 	Updated []Card `json:"updated,omitempty"`
 	Accepted []CardMeta `json:"accepted,omitempty"`
+	Created []Card `json:"created,omitempty"`
 }

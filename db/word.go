@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/json"
 	"japv6/models"
 	"log"
 )
@@ -67,35 +66,35 @@ func SelectWordCards() ([]models.Card, error) {
 	return re, nil
 }
 
-func SelectMetaCardsByIds(ids []int) ([]models.CardMeta, error) {
-	j, err := json.Marshal(ids)
-	if err != nil {
-		return nil, err
-	}
+// func SelectMetaCardsByIds(ids []int) ([]models.CardMeta, error) {
+// 	j, err := json.Marshal(ids)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	query := `
-		SELECT id, card_v, card_sync_v
-		FROM words
-		WHERE id IN (SELECT value FROM json_each(?))`
+// 	query := `
+// 		SELECT id, card_v, card_sync_v
+// 		FROM words
+// 		WHERE id IN (SELECT value FROM json_each(?))`
 
-	rows, err := conn.Query(query, j)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// 	rows, err := conn.Query(query, j)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
 
-	re := make([]models.CardMeta, 0, 10)
-	for rows.Next() {
-		var c models.CardMeta
-		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
-		if err != nil {
-			return nil, err
-		}
-		re = append(re, c)
-	}
+// 	re := make([]models.CardMeta, 0, 10)
+// 	for rows.Next() {
+// 		var c models.CardMeta
+// 		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		re = append(re, c)
+// 	}
 
-	return re, nil
-}
+// 	return re, nil
+// }
 
 func UpdateWordCards(cards []models.Card) ([]models.CardMeta, error) {
 	v, err := GetVersion("word_cards")
