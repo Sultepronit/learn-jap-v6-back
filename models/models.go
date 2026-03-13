@@ -13,10 +13,10 @@ type Card struct {
 	Data json.RawMessage `json:"data"`
 }
 
-type Report struct {
-	Type string `json:"type"`
-	V int `json:"v"`
-	Updated []Card `json:"updated,omitempty"`
+type Msg struct {
+	Type     string     `json:"type"`
+	V        int        `json:"v"`
+	Updated  []Card     `json:"updated,omitempty"`
 	Accepted []CardMeta `json:"accepted,omitempty"`
-	Created []Card `json:"created,omitempty"`
+	Created  []Card     `json:"created,omitempty"`
 }

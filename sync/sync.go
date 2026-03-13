@@ -1,9 +1,9 @@
 package sync
 
 import (
+	"fmt"
 	"japv6/db"
 	"japv6/models"
-	"fmt"
 )
 
 func filterUpdates(table string, group string, inputC []models.Card, isFresh bool) ([]models.Card, error) {
@@ -38,19 +38,18 @@ func filterUpdates(table string, group string, inputC []models.Card, isFresh boo
 	return re, nil
 }
 
-func update() {
-	filtered, err := filterUpdates(args[0], args[1], report.Updated, (clientV + 100 > lastV))
+func update(table string, group string, updates []models.Card, lastV int, clientV int) ([]models.CardMeta, int, error) {
+	filtered, err := filterUpdates(table, group, updates, (clientV+100 > lastV))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	// fmt.Println("filtered:", filtered)
-	
-	if len(filtered) != 0 {
-		report.Accepted, newV, err = db.UpdateCards(filtered, lastV, args[0], args[1])
-		if err != nil {
-			return nil, err
-		}
+
+	if len(filtered) == 0 {
+		return nil, lastV, nil
 	}
+
+	return db.UpdateCards(filtered, lastV, table, group)
 }
 
 var typeToArgs = map[string][]string{
@@ -58,7 +57,7 @@ var typeToArgs = map[string][]string{
 	"wordProgs": {"word", "prog"},
 }
 
-func sync(report models.Report) (result *models.Report, err error) {
+func sync(report models.Msg) (result *models.Msg, err error) {
 	result = &report
 
 	args := typeToArgs[report.Type]
@@ -70,19 +69,28 @@ func sync(report models.Report) (result *models.Report, err error) {
 	}
 
 	newV := lastV
-	if (report.Updated != nil) {
-		filtered, err := filterUpdates(args[0], args[1], report.Updated, (clientV + 100 > lastV))
+	if report.Updated != nil {
+		report.Accepted, newV, err = update(args[0], args[1], report.Updated, lastV, clientV)
 		if err != nil {
 			return nil, err
 		}
-		// fmt.Println("filtered:", filtered)
-		
-		if len(filtered) != 0 {
-			report.Accepted, newV, err = db.UpdateCards(filtered, lastV, args[0], args[1])
-			if err != nil {
-				return nil, err
-			}
-		}
+		// filtered, err := filterUpdates(args[0], args[1], report.Updated, (clientV + 100 > lastV))
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// // fmt.Println("filtered:", filtered)
+
+		// if len(filtered) != 0 {
+		// 	report.Accepted, newV, err = db.UpdateCards(filtered, lastV, args[0], args[1])
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// }
+	}
+
+	if report.Created != nil {
+		err = db.TempFillCards(report.Created, args[0], args[1])
+
 	}
 
 	if clientV == lastV && len(report.Accepted) == 0 {
@@ -99,8 +107,8 @@ func sync(report models.Report) (result *models.Report, err error) {
 	return result, nil
 }
 
-func Do(inputR []models.Report) ([]*models.Report, error) {
-	outputR := make([]*models.Report, 0, len(inputR))
+func Do(inputR []models.Msg) ([]*models.Msg, error) {
+	outputR := make([]*models.Msg, 0, len(inputR))
 	for _, r := range inputR {
 		rs, err := sync(r)
 		if err != nil {

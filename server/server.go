@@ -2,11 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"japv6/db"
 	"japv6/models"
 	"japv6/sync"
 	"log"
-	"fmt"
 	"net/http"
 )
 
@@ -42,7 +42,7 @@ func Start() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		log.Println(r.URL.Path)
 
-		var reports []models.Report
+		var reports []models.Msg
 		if err := json.NewDecoder(r.Body).Decode(&reports); err != nil {
 			log.Println("Bad JSON:", err)
 			http.Error(w, "Bad JSON", 400)
