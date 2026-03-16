@@ -123,6 +123,7 @@ func selectMetaCardById(tx *sql.Tx, table string, group string, id int) (*models
 	return &card, nil
 }
 
+// refactore these thigs with creation of the statement!
 func updateCard(tx *sql.Tx, c models.Card, table string, group string) error {
 	query := fmt.Sprintf(`
 		UPDATE %[1]s

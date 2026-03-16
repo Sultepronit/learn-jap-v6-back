@@ -14,7 +14,7 @@ type Card struct {
 }
 
 // SyncBlock?
-type Msg struct {
+type SyncBlock struct {
 	Type     string     `json:"type"`
 	V        int        `json:"v"`
 	Updated  []Card     `json:"updated,omitempty"`
@@ -22,6 +22,6 @@ type Msg struct {
 }
 
 type Message struct {
-	Standard []*Msg `json:"standard,omitempty"`
-	DeletedWords []int `json:"deletedWords,omitempty"`
+	Standard     []*SyncBlock `json:"standard,omitempty"`
+	DeletedWords []int        `json:"deletedWords,omitempty"`
 }

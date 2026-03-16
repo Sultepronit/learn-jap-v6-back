@@ -11,21 +11,21 @@ var typeToArgs = map[string][]string{
 	"wordProgs": {"word", "prog"},
 }
 
-func handleStandard(msg *models.Msg) (*models.Msg, error) {
-	var res models.Msg
-	res.Type = msg.Type
+func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
+	var res models.SyncBlock
+	res.Type = block.Type
 
-	args := typeToArgs[msg.Type]
+	args := typeToArgs[block.Type]
 
-	clientV := msg.V
+	clientV := block.V
 	lastV, err := db.GetVersion(fmt.Sprintf("%s_%ss", args[0], args[1]))
 	if err != nil {
 		return nil, err
 	}
 
 	newV := lastV
-	if msg.Updated != nil {
-		res.Accepted, newV, err = db.UpsertCards(msg.Updated, lastV, args[0], args[1])
+	if block.Updated != nil {
+		res.Accepted, newV, err = db.UpsertCards(block.Updated, lastV, args[0], args[1])
 		if err != nil {
 			return nil, err
 		}
@@ -50,9 +50,17 @@ func handleStandard(msg *models.Msg) (*models.Msg, error) {
 // func Do(inputMsg models.Message) ([]*models.Msg, error) {
 func Do(inputMsg models.Message) (*models.Message, error) {
 	// standard := make([]*models.Msg, 0, len(inputMsg.Standard))
-	var standard []*models.Msg
-	for _, m := range inputMsg.Standard {
-		rs, err := handleStandard(m)
+	if inputMsg.DeletedWords != nil {
+		err := db.DeleteWords(inputMsg.DeletedWords)
+		if err != nil {
+			return nil, err
+		}
+		// outputMsg.DeletedWords = inputMsg.DeletedWords
+	}
+
+	var standard []*models.SyncBlock
+	for _, block := range inputMsg.Standard {
+		rs, err := handleStandard(block)
 		if err != nil {
 			return nil, err
 		}
@@ -62,9 +70,6 @@ func Do(inputMsg models.Message) (*models.Message, error) {
 	}
 
 	outputMsg := models.Message{Standard: standard}
-	if (inputMsg.DeletedWords != nil) {
-		outputMsg.DeletedWords = inputMsg.DeletedWords
-	}
 
 	// return standard, nil
 	return &outputMsg, nil

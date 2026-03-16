@@ -2,67 +2,71 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"japv6/models"
 	"log"
 )
 
 func getVersion(tx *sql.Tx, id string) (int, error) {
-    query := "SELECT val FROM versions WHERE id = ?"
-    var re int
-    
-    err := tx.QueryRow(query, id).Scan(&re)
-    if err != nil {
-        return 0, err
-    }
+	query := "SELECT val FROM versions WHERE id = ?"
+	var re int
 
-    return re, nil
+	err := tx.QueryRow(query, id).Scan(&re)
+	if err != nil {
+		return 0, err
+	}
+
+	return re, nil
 }
 
-func DeleteWords(ids []int) (error) {
+func DeleteWords(ids []int) error {
 	tx, err := conn.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	cardsV, err := getVersion(tx, "word_cards")
-	progsV, err := getVersion(tx, "word_progsV")
+	vIds := []string{"word_cards", "word_progs"}
+	vs := make([]int, 0, 2)
+	for _, id := range vIds {
+		v, err := getVersion(tx, id)
+		if err != nil {
+			return err
+		}
+		vs = append(vs, v)
+	}
 
-	// for _, ic := range inputCards {
-	// 	sc, err := selectMetaCardById(tx, table, group, ic.ID)
-	// 	if err != nil {
-	// 		return nil, 0, err
-	// 	}
-	// 	fmt.Println("sc:", sc)
+	fmt.Println(vs)
 
-	// 	var action func(*sql.Tx, models.Card, string, string) error
+	stmt, err := tx.Prepare(`
+		UPDATE words 
+		SET card_v = -100, card_sync_v = ?, card_data = X'7b7d',
+			prog_v = -100, prog_sync_v = ?, prog_data = X'7b7d'
+		WHERE id = ?;
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
 
-	// 	if sc == nil {
-	// 		fmt.Println("new card!")
-	// 		action = createCard
-	// 	} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && isFresh) || sc.SyncV < 1 {
-	// 		action = updateCard
-	// 	}
+	for _, id := range ids {
+		vs[0]++
+		vs[1]++
+		_, err := stmt.Exec(vs[0], vs[1], id)
+		if err != nil {
+			return err
+		}
+	}
 
-	// 	if action != nil {
-	// 		v++
-	// 		ic.SyncV = v
-	// 		re = append(re, ic.CardMeta)
-	// 		fmt.Println(ic.CardMeta)
-	// 		err = action(tx, ic, table, group)
-	// 		if err != nil {
-	// 			return nil, 0, err
-	// 		}
-	// 	}
-	// }
+	for i, id := range vIds {
+		_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", vs[i], id)
+		if err != nil {
+			return err
+		}
+	}
 
-	// tn := fmt.Sprintf("%s_%ss", tableEntry, group)
-	// _, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
-	// if err != nil {
-	// 	return
-	// }
-
-	// return re, v, tx.Commit()
+	// return nil
+	return tx.Commit()
 }
 
 func InsertWordCard(card models.Card) error {
