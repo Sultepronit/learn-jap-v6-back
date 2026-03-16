@@ -5,6 +5,56 @@ import (
 	"log"
 )
 
+func DeleteWords(ids []int) (re []models.CardMeta, newV int, err error) {
+	re = make([]models.CardMeta, 0, len(inputCards))
+	newV = 0
+
+	isFresh := true
+
+	tx, err := conn.Begin()
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+
+	table := tableEntry + "s"
+	for _, ic := range inputCards {
+		sc, err := selectMetaCardById(tx, table, group, ic.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		fmt.Println("sc:", sc)
+
+		var action func(*sql.Tx, models.Card, string, string) error
+
+		if sc == nil {
+			fmt.Println("new card!")
+			action = createCard
+		} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && isFresh) || sc.SyncV < 1 {
+			action = updateCard
+		}
+
+		if action != nil {
+			v++
+			ic.SyncV = v
+			re = append(re, ic.CardMeta)
+			fmt.Println(ic.CardMeta)
+			err = action(tx, ic, table, group)
+			if err != nil {
+				return nil, 0, err
+			}
+		}
+	}
+
+	tn := fmt.Sprintf("%s_%ss", tableEntry, group)
+	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
+	if err != nil {
+		return
+	}
+
+	return re, v, tx.Commit()
+}
+
 func InsertWordCard(card models.Card) error {
 	query := `
 		INSERT OR REPLACE INTO words (id, card_v, card_sync_v, card_data)

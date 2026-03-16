@@ -2,41 +2,40 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"japv6/models"
 )
 
-func SelectMetaCardsByIds(table string, group string, ids []int) ([]models.CardMeta, error) {
-	j, err := json.Marshal(ids)
-	if err != nil {
-		return nil, err
-	}
+// func SelectMetaCardsByIds(table string, group string, ids []int) ([]models.CardMeta, error) {
+// 	j, err := json.Marshal(ids)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	query := fmt.Sprintf(`
-		SELECT id, %[1]s_v, %[1]s_sync_v
-		FROM %[2]ss
-		WHERE id IN (SELECT value FROM json_each(?))
-	`, group, table)
+// 	query := fmt.Sprintf(`
+// 		SELECT id, %[1]s_v, %[1]s_sync_v
+// 		FROM %[2]ss
+// 		WHERE id IN (SELECT value FROM json_each(?))
+// 	`, group, table)
 
-	rows, err := conn.Query(query, j)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// 	rows, err := conn.Query(query, j)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
 
-	re := make([]models.CardMeta, 0, 10)
-	for rows.Next() {
-		var c models.CardMeta
-		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
-		if err != nil {
-			return nil, err
-		}
-		re = append(re, c)
-	}
+// 	re := make([]models.CardMeta, 0, 10)
+// 	for rows.Next() {
+// 		var c models.CardMeta
+// 		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		re = append(re, c)
+// 	}
 
-	return re, nil
-}
+// 	return re, nil
+// }
 
 func SelectCardsSyncRange(table string, group string, from int, to int) ([]models.Card, error) {
 	query := fmt.Sprintf(`
@@ -64,46 +63,46 @@ func SelectCardsSyncRange(table string, group string, from int, to int) ([]model
 	return re, nil
 }
 
-func UpdateCards(cards []models.Card, v int, table string, group string) (re []models.CardMeta, newV int, err error) {
-	re = make([]models.CardMeta, len(cards))
-	newV = 0
+// func UpdateCards(cards []models.Card, v int, table string, group string) (re []models.CardMeta, newV int, err error) {
+// 	re = make([]models.CardMeta, len(cards))
+// 	newV = 0
 
-	tx, err := conn.Begin()
-	if err != nil {
-		return
-	}
-	defer tx.Rollback()
+// 	tx, err := conn.Begin()
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer tx.Rollback()
 
-	query := fmt.Sprintf(`
-		UPDATE %ss
-		SET %[2]s_v = ?, %[2]s_sync_v = ?, %[2]s_data = ?
-		WHERE id = ?;
-	`, table, group)
-	// fmt.Println(query)
-	stmt, err := tx.Prepare(query)
-	if err != nil {
-		return
-	}
-	defer stmt.Close()
+// 	query := fmt.Sprintf(`
+// 		UPDATE %ss
+// 		SET %[2]s_v = ?, %[2]s_sync_v = ?, %[2]s_data = ?
+// 		WHERE id = ?;
+// 	`, table, group)
+// 	// fmt.Println(query)
+// 	stmt, err := tx.Prepare(query)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer stmt.Close()
 
-	for i, c := range cards {
-		v++
-		c.SyncV = v
-		re[i] = c.CardMeta
-		_, err = stmt.Exec(c.V, c.SyncV, c.Data, c.ID)
-		if err != nil {
-			return
-		}
-	}
+// 	for i, c := range cards {
+// 		v++
+// 		c.SyncV = v
+// 		re[i] = c.CardMeta
+// 		_, err = stmt.Exec(c.V, c.SyncV, c.Data, c.ID)
+// 		if err != nil {
+// 			return
+// 		}
+// 	}
 
-	tn := fmt.Sprintf("%s_%ss", table, group)
-	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
-	if err != nil {
-		return
-	}
+// 	tn := fmt.Sprintf("%s_%ss", table, group)
+// 	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
+// 	if err != nil {
+// 		return
+// 	}
 
-	return re, v, tx.Commit()
-}
+// 	return re, v, tx.Commit()
+// }
 
 func selectMetaCardById(tx *sql.Tx, table string, group string, id int) (*models.CardMeta, error) {
 	query := fmt.Sprintf(`

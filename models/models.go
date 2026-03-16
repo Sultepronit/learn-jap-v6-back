@@ -13,10 +13,15 @@ type Card struct {
 	Data json.RawMessage `json:"data"`
 }
 
+// SyncBlock?
 type Msg struct {
 	Type     string     `json:"type"`
 	V        int        `json:"v"`
 	Updated  []Card     `json:"updated,omitempty"`
 	Accepted []CardMeta `json:"accepted,omitempty"`
-	Created  []Card     `json:"created,omitempty"`
+}
+
+type Message struct {
+	Standard []*Msg `json:"standard,omitempty"`
+	DeletedWords []int `json:"deletedWords,omitempty"`
 }

@@ -11,7 +11,7 @@ var typeToArgs = map[string][]string{
 	"wordProgs": {"word", "prog"},
 }
 
-func sync2(msg models.Msg) (*models.Msg, error) {
+func handleStandard(msg *models.Msg) (*models.Msg, error) {
 	var res models.Msg
 	res.Type = msg.Type
 
@@ -46,17 +46,26 @@ func sync2(msg models.Msg) (*models.Msg, error) {
 	// return nil, nil
 }
 
-func Do(inputMsg []models.Msg) ([]*models.Msg, error) {
-	outputMsg := make([]*models.Msg, 0, len(inputMsg))
-	for _, m := range inputMsg {
-		rs, err := sync2(m)
+// func Do(inputMsg []models.Msg) ([]*models.Msg, error) {
+// func Do(inputMsg models.Message) ([]*models.Msg, error) {
+func Do(inputMsg models.Message) (*models.Message, error) {
+	// standard := make([]*models.Msg, 0, len(inputMsg.Standard))
+	var standard []*models.Msg
+	for _, m := range inputMsg.Standard {
+		rs, err := handleStandard(m)
 		if err != nil {
 			return nil, err
 		}
 		if rs != nil {
-			outputMsg = append(outputMsg, rs)
+			standard = append(standard, rs)
 		}
 	}
 
-	return outputMsg, nil
+	outputMsg := models.Message{Standard: standard}
+	if (inputMsg.DeletedWords != nil) {
+		outputMsg.DeletedWords = inputMsg.DeletedWords
+	}
+
+	// return standard, nil
+	return &outputMsg, nil
 }
