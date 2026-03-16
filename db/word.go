@@ -1,58 +1,68 @@
 package db
 
 import (
+	"database/sql"
 	"japv6/models"
 	"log"
 )
 
-func DeleteWords(ids []int) (re []models.CardMeta, newV int, err error) {
-	re = make([]models.CardMeta, 0, len(inputCards))
-	newV = 0
+func getVersion(tx *sql.Tx, id string) (int, error) {
+    query := "SELECT val FROM versions WHERE id = ?"
+    var re int
+    
+    err := tx.QueryRow(query, id).Scan(&re)
+    if err != nil {
+        return 0, err
+    }
 
-	isFresh := true
+    return re, nil
+}
 
+func DeleteWords(ids []int) (error) {
 	tx, err := conn.Begin()
 	if err != nil {
-		return
+		return err
 	}
 	defer tx.Rollback()
 
-	table := tableEntry + "s"
-	for _, ic := range inputCards {
-		sc, err := selectMetaCardById(tx, table, group, ic.ID)
-		if err != nil {
-			return nil, 0, err
-		}
-		fmt.Println("sc:", sc)
+	cardsV, err := getVersion(tx, "word_cards")
+	progsV, err := getVersion(tx, "word_progsV")
 
-		var action func(*sql.Tx, models.Card, string, string) error
+	// for _, ic := range inputCards {
+	// 	sc, err := selectMetaCardById(tx, table, group, ic.ID)
+	// 	if err != nil {
+	// 		return nil, 0, err
+	// 	}
+	// 	fmt.Println("sc:", sc)
 
-		if sc == nil {
-			fmt.Println("new card!")
-			action = createCard
-		} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && isFresh) || sc.SyncV < 1 {
-			action = updateCard
-		}
+	// 	var action func(*sql.Tx, models.Card, string, string) error
 
-		if action != nil {
-			v++
-			ic.SyncV = v
-			re = append(re, ic.CardMeta)
-			fmt.Println(ic.CardMeta)
-			err = action(tx, ic, table, group)
-			if err != nil {
-				return nil, 0, err
-			}
-		}
-	}
+	// 	if sc == nil {
+	// 		fmt.Println("new card!")
+	// 		action = createCard
+	// 	} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && isFresh) || sc.SyncV < 1 {
+	// 		action = updateCard
+	// 	}
 
-	tn := fmt.Sprintf("%s_%ss", tableEntry, group)
-	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
-	if err != nil {
-		return
-	}
+	// 	if action != nil {
+	// 		v++
+	// 		ic.SyncV = v
+	// 		re = append(re, ic.CardMeta)
+	// 		fmt.Println(ic.CardMeta)
+	// 		err = action(tx, ic, table, group)
+	// 		if err != nil {
+	// 			return nil, 0, err
+	// 		}
+	// 	}
+	// }
 
-	return re, v, tx.Commit()
+	// tn := fmt.Sprintf("%s_%ss", tableEntry, group)
+	// _, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
+	// if err != nil {
+	// 	return
+	// }
+
+	// return re, v, tx.Commit()
 }
 
 func InsertWordCard(card models.Card) error {
