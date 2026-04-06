@@ -104,7 +104,8 @@ func SelectCardsSyncRange(table string, group string, from int, to int) ([]model
 // 	return re, v, tx.Commit()
 // }
 
-func selectMetaCardById(tx *sql.Tx, table string, group string, id int) (*models.CardMeta, error) {
+// func selectMetaCardById(tx *sql.Tx, table string, group string, id int) (*models.CardMeta, error) {
+func selectMetaCardById(tx *sql.Tx, table string, group string, id any) (*models.CardMeta, error) {
 	query := fmt.Sprintf(`
 		SELECT %[1]s_v, %[1]s_sync_v
 		FROM %[2]s
@@ -195,7 +196,8 @@ func UpsertCards(inputCards []models.Card, v int, tableEntry string, group strin
 	return re, v, tx.Commit()
 }
 
-func TempFillCards(cards []models.Card, table string, group string) error {
+// func TempFillCards(cards []models.Card, table string, group string) error {
+func TempFillCards(cards []models.AnyCard, table string, group string) error {
 	tx, err := conn.Begin()
 	if err != nil {
 		return err

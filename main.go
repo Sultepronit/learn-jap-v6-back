@@ -8,7 +8,7 @@ import (
 
 func main() {
 	db.Open()
-	db.Edit()
+	// db.Edit()
 	// v, err := db.GetVersion("word_cards")
 	// log.Println("v:", v, "err:", err)
 

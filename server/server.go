@@ -15,7 +15,8 @@ func Start() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		log.Println(r.URL.Path)
-		var cards []models.Card
+		// var cards []models.Card
+		var cards []models.AnyCard
 		if err := json.NewDecoder(r.Body).Decode(&cards); err != nil {
 			log.Println("Bad JSON:", err)
 			http.Error(w, "Bad JSON", 400)

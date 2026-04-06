@@ -23,8 +23,8 @@ func Edit() {
 	// `
 	
 	query := `
-	DROP TABLE IF EXISTS kanji;
-	CREATE TABLE kanji (
+	DROP TABLE IF EXISTS kanjis;
+	CREATE TABLE kanjis (
 		id TEXT PRIMARY KEY,
 		card_v INTEGER NOT NULL DEFAULT 0,
 		card_sync_v INTEGER NOT NULL DEFAULT 0,
