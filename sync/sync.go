@@ -9,6 +9,8 @@ import (
 var typeToArgs = map[string][]string{
 	"wordCards": {"word", "card"},
 	"wordProgs": {"word", "prog"},
+	"kanjiCards": {"kanji", "card"},
+	"kanjiProgs": {"kanji", "prog"},
 }
 
 func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
@@ -18,6 +20,7 @@ func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
 	args := typeToArgs[block.Type]
 
 	clientV := block.V
+	// fmt.Println(args, clientV)
 	lastV, err := db.GetVersion(fmt.Sprintf("%s_%ss", args[0], args[1]))
 	if err != nil {
 		return nil, err
