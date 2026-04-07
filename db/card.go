@@ -6,37 +6,6 @@ import (
 	"japv6/models"
 )
 
-// func SelectMetaCardsByIds(table string, group string, ids []int) ([]models.CardMeta, error) {
-// 	j, err := json.Marshal(ids)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	query := fmt.Sprintf(`
-// 		SELECT id, %[1]s_v, %[1]s_sync_v
-// 		FROM %[2]ss
-// 		WHERE id IN (SELECT value FROM json_each(?))
-// 	`, group, table)
-
-// 	rows, err := conn.Query(query, j)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-
-// 	re := make([]models.CardMeta, 0, 10)
-// 	for rows.Next() {
-// 		var c models.CardMeta
-// 		err = rows.Scan(&c.ID, &c.V, &c.SyncV)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		re = append(re, c)
-// 	}
-
-// 	return re, nil
-// }
-
 func SelectCardsSyncRange(table string, group string, from int, to int) ([]models.Card, error) {
 	query := fmt.Sprintf(`
 		SELECT id, %[1]s_v, %[1]s_sync_v, %[1]s_data
@@ -62,47 +31,6 @@ func SelectCardsSyncRange(table string, group string, from int, to int) ([]model
 
 	return re, nil
 }
-
-// func UpdateCards(cards []models.Card, v int, table string, group string) (re []models.CardMeta, newV int, err error) {
-// 	re = make([]models.CardMeta, len(cards))
-// 	newV = 0
-
-// 	tx, err := conn.Begin()
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer tx.Rollback()
-
-// 	query := fmt.Sprintf(`
-// 		UPDATE %ss
-// 		SET %[2]s_v = ?, %[2]s_sync_v = ?, %[2]s_data = ?
-// 		WHERE id = ?;
-// 	`, table, group)
-// 	// fmt.Println(query)
-// 	stmt, err := tx.Prepare(query)
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer stmt.Close()
-
-// 	for i, c := range cards {
-// 		v++
-// 		c.SyncV = v
-// 		re[i] = c.CardMeta
-// 		_, err = stmt.Exec(c.V, c.SyncV, c.Data, c.ID)
-// 		if err != nil {
-// 			return
-// 		}
-// 	}
-
-// 	tn := fmt.Sprintf("%s_%ss", table, group)
-// 	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	return re, v, tx.Commit()
-// }
 
 // func selectMetaCardById(tx *sql.Tx, table string, group string, id int) (*models.CardMeta, error) {
 func selectMetaCardById(tx *sql.Tx, table string, group string, id any) (*models.CardMeta, error) {
@@ -146,11 +74,17 @@ func createCard(tx *sql.Tx, c models.Card, table string, group string) error {
 	return err
 }
 
-func UpsertCards(inputCards []models.Card, v int, tableEntry string, group string) (re []models.CardMeta, newV int, err error) {
-	re = make([]models.CardMeta, 0, len(inputCards))
-	newV = 0
+func updateV(tx *sql.Tx, newV int, tableEntry string, group string) error {
+	tn := fmt.Sprintf("%s_%ss", tableEntry, group)
+	_, err := tx.Exec("UPDATE versions SET val = ? WHERE id = ?", newV, tn)
+	return err
+}
 
-	isFresh := true
+func UpsertCards(inputCards []models.Card, v int, isOutdated bool, tableEntry string, group string) (re []models.CardMeta, newV int, err error) {
+	re = make([]models.CardMeta, 0, len(inputCards))
+	// newV = 0
+	// newV = v + 1
+	newV = v
 
 	tx, err := conn.Begin()
 	if err != nil {
@@ -171,13 +105,18 @@ func UpsertCards(inputCards []models.Card, v int, tableEntry string, group strin
 		if sc == nil {
 			fmt.Println("new card!")
 			action = createCard
-		} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && isFresh) || sc.SyncV < 1 {
+		} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && (!isOutdated || ic.SyncV == -1)) {
+			// 1) the client has up to date card
+			// 2) this client is more sedulous than the previous one & is not outdated
+			// 3) the client is more sedulous & it is the origin of the card
 			action = updateCard
 		}
 
 		if action != nil {
-			v++
-			ic.SyncV = v
+			// v++
+			// ic.SyncV = v
+			newV = v + 1
+			ic.SyncV = newV
 			re = append(re, ic.CardMeta)
 			fmt.Println(ic.CardMeta)
 			err = action(tx, ic, table, group)
@@ -187,17 +126,22 @@ func UpsertCards(inputCards []models.Card, v int, tableEntry string, group strin
 		}
 	}
 
-	tn := fmt.Sprintf("%s_%ss", tableEntry, group)
-	_, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
-	if err != nil {
-		return
+	// tn := fmt.Sprintf("%s_%ss", tableEntry, group)
+	// _, err = tx.Exec("UPDATE versions SET val = ? WHERE id = ?", v, tn)
+	// if err != nil {
+	// 	return
+	// }
+	if newV > v {
+		if err := updateV(tx, newV, tableEntry, group); err != nil {
+			return nil, 0, err
+		}
 	}
 
-	return re, v, tx.Commit()
+	return re, newV, tx.Commit()
 }
 
-// func TempFillCards(cards []models.Card, table string, group string) error {
-func TempFillCards(cards []models.AnyCard, table string, group string) error {
+func TempFillCards(cards []models.Card, table string, group string) error {
+// func TempFillCards(cards []models.AnyCard, table string, group string) error {
 	tx, err := conn.Begin()
 	if err != nil {
 		return err

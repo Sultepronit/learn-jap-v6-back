@@ -19,16 +19,17 @@ func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
 
 	args := typeToArgs[block.Type]
 
-	clientV := block.V
-	// fmt.Println(args, clientV)
 	lastV, err := db.GetVersion(fmt.Sprintf("%s_%ss", args[0], args[1]))
 	if err != nil {
 		return nil, err
 	}
 
+	clientV := block.V
+	isOutdated := clientV + 100 < lastV
+
 	newV := lastV
 	if block.Updated != nil {
-		res.Accepted, newV, err = db.UpsertCards(block.Updated, lastV, args[0], args[1])
+		res.Accepted, newV, err = db.UpsertCards(block.Updated, lastV, isOutdated, args[0], args[1])
 		if err != nil {
 			return nil, err
 		}
@@ -40,13 +41,17 @@ func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
 	// fmt.Println(report.Accepted)
 
 	res.V = newV
+	
+	if isOutdated {
+		res.ForcedUpdate = true
+	}
+
 	res.Updated, err = db.SelectCardsSyncRange(args[0], args[1], clientV+1, lastV)
 	if err != nil {
 		return nil, err
 	}
 
 	return &res, nil
-	// return nil, nil
 }
 
 // func Do(inputMsg []models.Msg) ([]*models.Msg, error) {
