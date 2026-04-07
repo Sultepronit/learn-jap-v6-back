@@ -32,7 +32,7 @@ func Edit() {
 		prog_v INTEGER NOT NULL DEFAULT 0,
 		prog_sync_v INTEGER NOT NULL DEFAULT 0,
 		prog_data BLOB
-	) STRICT;
+	) WITHOUT ROWID;
 	`
 
 	// query := `
