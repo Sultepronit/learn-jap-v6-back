@@ -3,7 +3,7 @@ package main
 import (
 	"japv6/db"
 	"japv6/server"
-	// "log"
+	"log"
 )
 
 func main() {
@@ -11,6 +11,6 @@ func main() {
 	// db.Edit()
 	// v, err := db.GetVersion("word_cards")
 	// log.Println("v:", v, "err:", err)
-
+	log.Println("Testing!")
 	server.Start()
 }
