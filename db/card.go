@@ -118,7 +118,8 @@ func UpsertCards(inputCards []models.Card, v int, isOutdated bool, tableEntry st
 		if err != nil {
 			return nil, 0, err
 		}
-		fmt.Println("sc:", sc)
+		// fmt.Println("sc:", sc)
+		fmt.Println(ic.CardMeta, sc)
 
 		// var action func(*sql.Tx, models.Card, string, string) error
 		var stmt *sql.Stmt
