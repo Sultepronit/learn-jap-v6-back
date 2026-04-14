@@ -51,24 +51,47 @@ func selectMetaCardById(tx *sql.Tx, table string, group string, id any) (*models
 	return &card, nil
 }
 
-func upsertIsValid(inputC *models.CardMeta, localC *models.CardMeta, isOutdated bool) bool {
-	// new card
-	if localC == nil {
-		fmt.Println("new card!")
-		return true
+func createStmts(tx *sql.Tx, table string, group string) (*sql.Stmt, *sql.Stmt, error) {
+	updateStmt, err := tx.Prepare(fmt.Sprintf(`
+		UPDATE %[1]s
+		SET %[2]s_v = ?, %[2]s_sync_v = ?, %[2]s_data = ?
+		WHERE id = ?;
+	`, table, group))
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// the client has up-to-date card
-	if inputC.SyncV == localC.SyncV {
-		return true
+	createStmt, err := tx.Prepare(fmt.Sprintf(`
+		INSERT INTO %[1]s (id, %[2]s_v, %[2]s_sync_v, %[2]s_data)
+		VALUES (?, ?, ?, ?);
+	`, table, group))
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// the client is more painstaking than the previous one & is not outdated
-	if inputC.V > localC.V && !isOutdated {
-		return true
-	}
+	return updateStmt, createStmt, err
+}
 
-	return false
+// refactor these thigs with creation of the statement!
+func updateCard(tx *sql.Tx, c models.Card, table string, group string) error {
+	query := fmt.Sprintf(`
+		UPDATE %[1]s
+		SET %[2]s_v = ?, %[2]s_sync_v = ?, %[2]s_data = ?
+		WHERE id = ?;
+	`, table, group)
+
+	_, err := tx.Exec(query, c.V, c.SyncV, c.Data, c.ID)
+	return err
+}
+
+func createCard(tx *sql.Tx, c models.Card, table string, group string) error {
+	query := fmt.Sprintf(`
+		INSERT INTO %[1]s (id, %[2]s_v, %[2]s_sync_v, %[2]s_data)
+		VALUES (?, ?, ?, ?);
+	`, table, group)
+
+	_, err := tx.Exec(query, c.ID, c.V, c.SyncV, c.Data)
+	return err
 }
 
 func UpsertCards(inputCards []models.Card, v int, isOutdated bool, tableEntry string, group string) (re []models.CardMeta, newV int, err error) {
@@ -83,39 +106,47 @@ func UpsertCards(inputCards []models.Card, v int, isOutdated bool, tableEntry st
 
 	table := tableEntry + "s"
 
-	stmt, err := tx.Prepare(fmt.Sprintf(`
-		INSERT INTO %[1]s (id, %[2]s_v, %[2]s_sync_v, %[2]s_data)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			%[2]s_v = excluded.%[2]s_v,
-			%[2]s_sync_v = excluded.%[2]s_sync_v,
-			%[2]s_data = excluded.%[2]s_data;
-	`, table, group))
+	updateStmt, createStmt, err := createStmts(tx, table, group)
 	if err != nil {
 		return
 	}
-	defer stmt.Close()
+	defer updateStmt.Close()
+	defer createStmt.Close()
 
 	for _, ic := range inputCards {
-		lc, err := selectMetaCardById(tx, table, group, ic.ID)
+		sc, err := selectMetaCardById(tx, table, group, ic.ID)
 		if err != nil {
 			return nil, 0, err
 		}
+		// fmt.Println("sc:", sc)
+		fmt.Println(ic.CardMeta, sc)
 
-		fmt.Println(ic.CardMeta, lc)
+		// var action func(*sql.Tx, models.Card, string, string) error
+		var stmt *sql.Stmt
 
-		if !upsertIsValid(&ic.CardMeta, lc, isOutdated) {
-			continue
+		if sc == nil {
+			fmt.Println("new card!")
+			// action = createCard
+			stmt = createStmt
+		} else if ic.SyncV == sc.SyncV || (ic.V > sc.V && (!isOutdated || ic.SyncV == -1)) {
+			// 1) the client has up to date card
+			// 2) this client is more sedulous than the previous one & is not outdated
+			// 3) the client is more sedulous & it is the origin of the card
+			// action = updateCard
+			stmt = updateStmt
 		}
 
-		newV = v + 1
-		ic.SyncV = newV
-		re = append(re, ic.CardMeta)
-		fmt.Println(ic.CardMeta)
-
-		_, err = stmt.Exec(ic.ID, ic.V, ic.SyncV, ic.Data)
-		if err != nil {
-			return nil, 0, err
+		// if action != nil {
+		if stmt != nil {
+			newV = v + 1
+			ic.SyncV = newV
+			re = append(re, ic.CardMeta)
+			fmt.Println(ic.CardMeta)
+			// err = action(tx, ic, table, group)
+			_, err := stmt.Exec(ic.ID, ic.V, ic.SyncV, ic.Data)
+			if err != nil {
+				return nil, 0, err
+			}
 		}
 	}
 

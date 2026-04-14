@@ -7,8 +7,8 @@ import (
 )
 
 var typeToArgs = map[string][]string{
-	"wordCards": {"word", "card"},
-	"wordProgs": {"word", "prog"},
+	"wordCards":  {"word", "card"},
+	"wordProgs":  {"word", "prog"},
 	"kanjiCards": {"kanji", "card"},
 	"kanjiProgs": {"kanji", "prog"},
 }
@@ -25,7 +25,7 @@ func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
 	}
 
 	clientV := block.V
-	isOutdated := clientV + 100 < lastV
+	isOutdated := clientV+100 < lastV
 
 	newV := lastV
 	if block.Updated != nil {
@@ -41,7 +41,7 @@ func handleStandard(block *models.SyncBlock) (*models.SyncBlock, error) {
 	// fmt.Println(report.Accepted)
 
 	res.V = newV
-	
+
 	if isOutdated {
 		res.ForcedUpdate = true
 	}

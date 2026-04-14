@@ -14,11 +14,11 @@ type Card struct {
 }
 
 type SyncBlock struct {
-	Type     string     `json:"type"`
-	V        int        `json:"v"`
-	ForcedUpdate bool   `json:"forcedUpdate,omitempty"`
-	Updated  []Card     `json:"updated,omitempty"`
-	Accepted []CardMeta `json:"accepted,omitempty"`
+	Type         string     `json:"type"`
+	V            int        `json:"v"`
+	ForcedUpdate bool       `json:"forcedUpdate,omitempty"`
+	Updated      []Card     `json:"updated,omitempty"`
+	Accepted     []CardMeta `json:"accepted,omitempty"`
 }
 
 type Message struct {
